@@ -1,0 +1,155 @@
+ESP32-CAM WebServer URLS:
+
+Main Page Index:
+	http://192.168.1.50/?username=username&password=password
+
+Status:
+	http://192.168.1.50/status
+
+Resolution:
+	min: http://192.168.1.50/control?var=framesize&val=0
+	     http://192.168.1.50/control?var=framesize&val=1
+	     http://192.168.1.50/control?var=framesize&val=2
+	     http://192.168.1.50/control?var=framesize&val=3
+	     http://192.168.1.50/control?var=framesize&val=4
+	     http://192.168.1.50/control?var=framesize&val=5
+	     http://192.168.1.50/control?var=framesize&val=6
+	     http://192.168.1.50/control?var=framesize&val=7
+	     http://192.168.1.50/control?var=framesize&val=8
+	     http://192.168.1.50/control?var=framesize&val=9
+	max: http://192.168.1.50/control?var=framesize&val=10
+
+Quality: val = 0 - 63
+	min: http://192.168.1.50/control?var=quality&val=10
+	max: http://192.168.1.50/control?var=quality&val=63
+
+Brightness:
+	min: http://192.168.1.50/control?var=brightness&val=-2
+	     http://192.168.1.50/control?var=brightness&val=-1
+	mid: http://192.168.1.50/control?var=brightness&val=0
+	     http://192.168.1.50/control?var=brightness&val=1
+	max: http://192.168.1.50/control?var=brightness&val=2
+
+Contrast:
+	min: http://192.168.1.50/control?var=contrast&val=-2
+	     http://192.168.1.50/control?var=contrast&val=-1
+	mid: http://192.168.1.50/control?var=contrast&val=0
+	     http://192.168.1.50/control?var=contrast&val=1
+	max: http://192.168.1.50/control?var=contrast&val=2
+
+Saturation:
+	min: http://192.168.1.50/control?var=saturation&val=-2
+	     http://192.168.1.50/control?var=saturation&val=-1
+	mid: http://192.168.1.50/control?var=saturation&val=0
+	     http://192.168.1.50/control?var=saturation&val=1
+	max: http://192.168.1.50/control?var=saturation&val=2
+
+Special Effect:
+	No Effect: http://192.168.1.50/control?var=special_effect&val=0
+	Negative: http://192.168.1.50/control?var=special_effect&val=1
+	Grayscale: http://192.168.1.50/control?var=special_effect&val=2
+	Red Tint: http://192.168.1.50/control?var=special_effect&val=3
+	Green Tint: http://192.168.1.50/control?var=special_effect&val=4
+	Blue Tint: http://192.168.1.50/control?var=special_effect&val=5
+	Sepia: http://192.168.1.50/control?var=special_effect&val=6
+
+AWB:
+	off: http://192.168.1.50/control?var=awb&val=0
+	on: http://192.168.1.50/control?var=awb&val=1
+
+AWB Gain:
+	off: http://192.168.1.50/control?var=awb_gain&val=0
+	on: http://192.168.1.50/control?var=awb_gain&val=1
+
+WB Mode:
+	Auto: http://192.168.1.50/control?var=wb_mode&val=0
+	Sunny: http://192.168.1.50/control?var=wb_mode&val=1
+	Cloudy: http://192.168.1.50/control?var=wb_mode&val=2
+	Office: http://192.168.1.50/control?var=wb_mode&val=3
+	Home: http://192.168.1.50/control?var=wb_mode&val=4
+
+AEC SENSOR:
+	off: http://192.168.1.50/control?var=aec&val=0
+	on: http://192.168.1.50/control?var=aec&val=1
+
+AEC DSP:
+	off: http://192.168.1.50/control?var=aec2&val=0
+	on: http://192.168.1.50/control?var=aec2&val=1
+	
+AE Level:
+	min: http://192.168.1.50/control?var=ae_level&val=-2
+	     http://192.168.1.50/control?var=ae_level&val=-1
+	mid: http://192.168.1.50/control?var=ae_level&val=0
+	     http://192.168.1.50/control?var=ae_level&val=1
+	max: http://192.168.1.50/control?var=ae_level&val=2
+
+Exposure:  val = 0 - 1200
+	http://192.168.1.50/control?var=aec_value&val=0
+
+AGC:
+	on: http://192.168.1.50/control?var=agc&val=0
+	off: http://192.168.1.50/control?var=agc&val=1
+
+Gain: val = 1 - 31
+	http://192.168.1.50/control?var=agc_gain&val=1
+
+BPC:
+	on: http://192.168.1.50/control?var=bpc&val=1
+	off: http://192.168.1.50/control?var=bpc&val=0
+
+WPC:
+	on: http://192.168.1.50/control?var=wpc&val=1
+	off: http://192.168.1.50/control?var=wpc&val=0
+
+Raw GMA:
+	on: http://192.168.1.50/control?var=raw_gma&val=1
+	off: http://192.168.1.50/control?var=raw_gma&val=0
+
+Lens Correction:
+	on: http://192.168.1.50/control?var=lenc&val=1
+	off: http://192.168.1.50/control?var=lenc&val=0
+
+H-Mirror:
+	on: http://192.168.1.50/control?var=hmirror&val=1
+	off: http://192.168.1.50/control?var=hmirror&val=0
+
+V-Flip:
+	on: http://192.168.1.50/control?var=vflip&val=1
+	off: http://192.168.1.50/control?var=vflip&val=0
+
+DCCW (Downsize EN):
+	on: http://192.168.1.50/control?var=dcw&val=1
+	off: http://192.168.1.50/control?var=dcw&val=0
+
+Color Bar:
+	on: http://192.168.1.50/control?var=colorbar&val=1
+	off: http://192.168.1.50/control?var=colorbar&val=0
+
+Face Detection:
+	on: http://192.168.1.50/control?var=face_detect&val=1
+	off: http://192.168.1.50/control?var=face_detect&val=0
+
+Face Recognition:
+	on: http://192.168.1.50/control?var=face_recognize&val=1
+	off: http://192.168.1.50/control?var=face_recognize&val=0
+
+Get Still:
+	Click: http://192.168.1.50/capture?_cb=1613486549123
+
+Start Stream:
+	http://192.168.1.50:81/stream
+
+Enroll Face: Save Face
+	http://192.168.1.50/control?var=face_enroll&val=1
+
+Fuctor Reboot ESP:
+	http://192.168.1.50/reboot?username=username&password=password
+
+Restart ESP:
+	http://192.168.1.50/restart?username=username&password=password
+
+Open HostPot:
+	http://192.168.1.50/hostpot?username=username&password=password
+
+Close HostPot:
+	http://192.168.1.50/stophostpot?username=username&password=password
