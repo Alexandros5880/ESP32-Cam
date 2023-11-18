@@ -17,24 +17,15 @@
 #include "img_converters.h"
 #include "camera_index.h"
 #include "Arduino.h"
-
 #include "fb_gfx.h"
 #include "fd_forward.h"
 #include "fr_forward.h"
-
-
 #include "SD.h"
-
 #include <stdlib.h>
-
-
 // How Many Sample of the same face
 #define ENROLL_CONFIRM_TIMES 5
 // How many faces
 #define FACE_ID_SAVE_NUMBER 7
-
-
-
 #define FACE_COLOR_WHITE  0x00FFFFFF
 #define FACE_COLOR_BLACK  0x00000000
 #define FACE_COLOR_RED    0x000000FF
@@ -44,9 +35,6 @@
 #define FACE_COLOR_CYAN   (FACE_COLOR_BLUE | FACE_COLOR_GREEN)
 #define FACE_COLOR_PURPLE (FACE_COLOR_BLUE | FACE_COLOR_RED)
 
-
-
-
 typedef struct {
         size_t size; //number of values used for filtering
         size_t index; //current value index
@@ -55,35 +43,25 @@ typedef struct {
         int * values; //array to be filled with values
 } ra_filter_t;
 
-
-
 typedef struct {
         httpd_req_t *req;
         size_t len;
 } jpg_chunking_t;
-
-
 
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
-
-
 static ra_filter_t ra_filter;
 httpd_handle_t stream_httpd = NULL;
 httpd_handle_t camera_httpd = NULL;
-
-
 
 static mtmn_config_t mtmn_config = {0};
 static int8_t detection_enabled = 0;
 static int8_t recognition_enabled = 0;
 static int8_t is_enrolling = 0;
 static face_id_list id_list = {0};
-
-
 
 static ra_filter_t * ra_filter_init(ra_filter_t * filter, size_t sample_size){
     memset(filter, 0, sizeof(ra_filter_t));
@@ -97,8 +75,6 @@ static ra_filter_t * ra_filter_init(ra_filter_t * filter, size_t sample_size){
     filter->size = sample_size;
     return filter;
 }
-
-
 
 static int ra_filter_run(ra_filter_t * filter, int value){
     if(!filter->values){
@@ -115,8 +91,6 @@ static int ra_filter_run(ra_filter_t * filter, int value){
     return filter->sum / filter->count;
 }
 
-
-
 static void rgb_print(dl_matrix3du_t *image_matrix, uint32_t color, const char * str){
     fb_data_t fb;
     fb.width = image_matrix->w;
@@ -126,8 +100,6 @@ static void rgb_print(dl_matrix3du_t *image_matrix, uint32_t color, const char *
     fb.format = FB_BGR888;
     fb_gfx_print(&fb, (fb.width - (strlen(str) * 14)) / 2, 10, color, str);
 }
-
-
 
 static int rgb_printf(dl_matrix3du_t *image_matrix, uint32_t color, const char *format, ...){
     char loc_buf[64];
@@ -153,8 +125,6 @@ static int rgb_printf(dl_matrix3du_t *image_matrix, uint32_t color, const char *
     }
     return len;
 }
-
-
 
 static void draw_face_boxes(dl_matrix3du_t *image_matrix, box_array_t *boxes, int face_id){
     int x, y, w, h, i;
@@ -191,8 +161,6 @@ static void draw_face_boxes(dl_matrix3du_t *image_matrix, box_array_t *boxes, in
 #endif
     }
 }
-
-
 
 static int run_face_recognition(dl_matrix3du_t *image_matrix, box_array_t *net_boxes){
     dl_matrix3du_t *aligned_face = NULL;
@@ -236,8 +204,6 @@ static int run_face_recognition(dl_matrix3du_t *image_matrix, box_array_t *net_b
     return matched_id;
 }
 
-
-
 static size_t jpg_encode_stream(void * arg, size_t index, const void* data, size_t len){
     jpg_chunking_t *j = (jpg_chunking_t *)arg;
     if(!index){
@@ -249,8 +215,6 @@ static size_t jpg_encode_stream(void * arg, size_t index, const void* data, size
     j->len += len;
     return len;
 }
-
-
 
 static esp_err_t capture_handler(httpd_req_t *req){
     camera_fb_t * fb = NULL;
@@ -338,8 +302,6 @@ static esp_err_t capture_handler(httpd_req_t *req){
     Serial.printf("FACE: %uB %ums %s%d\n", (uint32_t)(jchunk.len), (uint32_t)((fr_end - fr_start)/1000), detected?"DETECTED ":"", face_id);
     return res;
 }
-
-
 
 static esp_err_t stream_handler(httpd_req_t *req){
     camera_fb_t * fb = NULL;
@@ -488,9 +450,6 @@ static esp_err_t stream_handler(httpd_req_t *req){
     return res;
 }
 
-
-
-
 static esp_err_t cmd_handler(httpd_req_t *req){
     char*  buf;
     size_t buf_len;
@@ -578,12 +537,6 @@ static esp_err_t cmd_handler(httpd_req_t *req){
     return httpd_resp_send(req, NULL, 0);
 }
 
-
-
-
-
-
-
 static esp_err_t status_handler(httpd_req_t *req){
     static char json_response[1024];
 
@@ -625,11 +578,6 @@ static esp_err_t status_handler(httpd_req_t *req){
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     return httpd_resp_send(req, json_response, strlen(json_response));
 }
-
-
-
-
-
 
 static esp_err_t index_handler(httpd_req_t *req){
     Serial.println("Menu Page.");
@@ -692,8 +640,6 @@ static esp_err_t index_handler(httpd_req_t *req){
         return httpd_resp_send(req, (const char *)index_ov2640_html_gz, index_ov2640_html_gz_len);
     }
 }
-
-
 
 static esp_err_t fuctor_reboot_handler(httpd_req_t *req) {
     char username[32];//"alexandrosplatanios";
@@ -869,7 +815,6 @@ static esp_err_t hostpot_handler(httpd_req_t *req) {// Get Parametres
     }
 }
 
-
 static esp_err_t stop_hostpot_handler(httpd_req_t *req) {// Get Parametres
     char username[32];//"alexandrosplatanios";
     char password[32];//"Platanios719791";
@@ -925,8 +870,6 @@ static esp_err_t stop_hostpot_handler(httpd_req_t *req) {// Get Parametres
         ESP.restart();
     }
 }
-
-
 
 void startCameraServer(){
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();

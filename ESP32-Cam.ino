@@ -9,12 +9,12 @@
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 
-
+//#define STATIC_WIFI_CONNECT
 
 
 /*
 // WiFi Connections data
-static const char* ssid = "WIND_2.4G_E9E03F";
+static const char* ssid = "WIND_9138C1";
 static const char* password = "DYk9RCbdEZ";
 */
 // Fixed IP
@@ -28,36 +28,31 @@ static IPAddress subnet(255, 255, 255, 0);
 void startCameraServer();
 bool camRuns = false;
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//#include "Arduino.h"
-
 #include "SPIFFS.h"
 #include "SD.h"
 #include "ESPAsyncWebServer.h"
 
-
-
-
 // HOSTPOT
-static const char* ssid_h     = "ESP32-Access-Point";
-static const char* password_h = "123456789";
+static const char* ssid_h     = "ESP32-Access-Point-12345678";
+static const char* password_h = "12345678";
 static IPAddress Ip_h(192, 168, 4, 1);
 static IPAddress NMask_h(255, 255, 255, 0);
-
-
 
 // Set web server HOSTPOT port number to 80
 static AsyncWebServer serverh(80);
 
-
-
 void startCameraServer();
 
-
-
-
-
+void updateSaveWifiConnectionDataToSD(
+  const char * ssid,
+  const char * password,
+  const char * usname,
+  const char * us_password,
+  const char * ip,
+  const char * gateway,
+  const char * subnet,
+  bool run
+);
 
 const char MAIN_page[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -171,12 +166,6 @@ const char MAIN_page[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-
-
-
-
-
-
 // Start The Server
 void start_hostpot() {
   if (WiFi.status() != WL_CONNECTED) {
@@ -188,7 +177,7 @@ void start_hostpot() {
     WiFi.softAPConfig(Ip_h, Ip_h, NMask_h);
     // Fixed IP
     IPAddress IP_h = WiFi.softAPIP();
-    Serial.print("HotSpot IP address: ");
+    Serial.print("\n\nHotSpot IP address: ");
     Serial.println(IP_h);
   }
   // Send web page with input fields to client
@@ -263,27 +252,23 @@ void start_hostpot() {
       }
       */
     }
+
+    const char * ssid = ssi_d.c_str();
+    const char * password = pas_s.c_str();
+    const char * usname = username.c_str();
+    const char * us_password = pas_u.c_str();
+    const char * ip = String(ip_1+"&"+ip_2+"&"+ip_3+"&"+ip_4).c_str();
+    const char * gateway = String(gateway_1+"&"+gateway_2+"&"+gateway_3+"&"+gateway_4).c_str();
+    const char * subnet = String(subnet_1+"&"+subnet_2+"&"+subnet_3+"&"+subnet_4).c_str();
+    bool run = true;
+
     Serial.println("Saving And Start The Server.");
     serverh.end();
     delay(1000);
-    deleteFile(SD_MMC, "/ssid.txt");
-    deleteFile(SD_MMC, "/password.txt");
-    deleteFile(SD_MMC, "/username.txt");
-    deleteFile(SD_MMC, "/password_c.txt");
-    deleteFile(SD_MMC, "/ip.txt");
-    deleteFile(SD_MMC, "/gateway.txt");
-    deleteFile(SD_MMC, "/subnet.txt");
-    //deleteFile(SD_MMC, "/port.txt");
-    writeFile(SD_MMC, "/ssid.txt", ssi_d.c_str());
-    writeFile(SD_MMC, "/password.txt", pas_s.c_str());
-    writeFile(SD_MMC, "/username.txt", username.c_str());
-    writeFile(SD_MMC, "/password_u.txt", pas_u.c_str());
-    writeFile(SD_MMC, "/ip.txt", String(ip_1+"&"+ip_2+"&"+ip_3+"&"+ip_4).c_str());
-    writeFile(SD_MMC, "/gateway.txt", String(gateway_1+"&"+gateway_2+"&"+gateway_3+"&"+gateway_4).c_str());
-    writeFile(SD_MMC, "/subnet.txt", String(subnet_1+"&"+subnet_2+"&"+subnet_3+"&"+subnet_4).c_str());
-    //writeFile(SD_MMC, "/port.txt", port.c_str());
-    deleteFile(SD_MMC, "/run.txt");
-    writeFile(SD_MMC, "/run.txt", "true");
+
+    // Save to sd
+    updateSaveWifiConnectionDataToSD(ssid, password, usname, us_password, ip, gateway, subnet, run);
+    
     // Restart ESP
     ESP.restart();
   });
@@ -311,28 +296,6 @@ void start_hostpot() {
   // Start
   serverh.begin();
 }
-
-
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Setup Cameras Pins
 void setupCamera() {
@@ -396,9 +359,6 @@ void setupCamera() {
   #endif
 }
 
-
-
-
 // Split String Function
 String* split(String &str) {
   String * my_data = new String[4];
@@ -413,8 +373,35 @@ String* split(String &str) {
   return my_data;
 }
 
-
-
+void updateSaveWifiConnectionDataToSD(
+  const char * ssid,
+  const char * password,
+  const char * usname,
+  const char * us_password,
+  const char * ip,
+  const char * gateway,
+  const char * subnet,
+  bool run
+) {
+  deleteFile(SD_MMC, "/ssid.txt");
+  deleteFile(SD_MMC, "/password.txt");
+  deleteFile(SD_MMC, "/username.txt");
+  deleteFile(SD_MMC, "/password_c.txt");
+  deleteFile(SD_MMC, "/ip.txt");
+  deleteFile(SD_MMC, "/gateway.txt");
+  deleteFile(SD_MMC, "/subnet.txt");
+  //deleteFile(SD_MMC, "/port.txt");
+  writeFile(SD_MMC, "/ssid.txt", ssid);
+  writeFile(SD_MMC, "/password.txt", password);
+  writeFile(SD_MMC, "/username.txt", usname);
+  writeFile(SD_MMC, "/password_u.txt", us_password);
+  writeFile(SD_MMC, "/ip.txt", ip);
+  writeFile(SD_MMC, "/gateway.txt", gateway);
+  writeFile(SD_MMC, "/subnet.txt", subnet);
+  //writeFile(SD_MMC, "/port.txt", port.c_str());
+  deleteFile(SD_MMC, "/run.txt");
+  writeFile(SD_MMC, "/run.txt", run ? "true" : "false");
+}
 
 void setup() {
   Serial.begin(115200);
@@ -424,17 +411,14 @@ void setup() {
   setup_SD();
   // Setup Camera
   setupCamera();
-  /*
-  deleteFile(SD_MMC, "/ssid.txt");
-  deleteFile(SD_MMC, "/password.txt");
-  deleteFile(SD_MMC, "/username.txt");
-  deleteFile(SD_MMC, "/password_c.txt");
-  deleteFile(SD_MMC, "/run.txt");
-  deleteFile(SD_MMC, "/ip.txt");
-  deleteFile(SD_MMC, "/gateway.txt");
-  deleteFile(SD_MMC, "/subnet.txt");
-  deleteFile(SD_MMC, "/port.txt");
-  */
+
+  #ifdef STATIC_WIFI_CONNECT
+  Serial.println("\n\nConnecting to static: WIND_9138C1 ...\n");
+  updateSaveWifiConnectionDataToSD("WIND_9138C1", "-Plat1234Tak1234", "admin", "123456", "192&168&1&111", "192&168&1&254", "255&255&255&0", true);
+  #else
+  Serial.println("\n\nNo connecting to static: WIND_9138C1\n");
+  #endif
+
   boolean runserver = (readFile(SD_MMC, "/run.txt") == "true")? true : false;
   if (!runserver) {
     // Start HotSpot
@@ -443,6 +427,7 @@ void setup() {
     // Setup WIFI
     String ssid = readFile(SD_MMC, "/ssid.txt");
     String password = readFile(SD_MMC, "/password.txt");
+
     // Get Static Ip GateWay and Subnet From Files
     String b_ip = readFile(SD_MMC, "/ip.txt");
     String b_gateway = readFile(SD_MMC, "/gateway.txt");
@@ -450,11 +435,15 @@ void setup() {
     String * ipp = split(b_ip);
     String * gatewayy = split(b_gateway);
     String * subnett = split(b_subnet);
+
     IPAddress ip(ipp[0].toInt(), ipp[1].toInt(), ipp[2].toInt(), ipp[3].toInt());
     IPAddress gateway(gatewayy[0].toInt(), gatewayy[1].toInt(), gatewayy[2].toInt(), gatewayy[3].toInt());
     IPAddress subnet(subnett[0].toInt(), subnett[1].toInt(), subnett[2].toInt(), subnett[3].toInt());
-    WiFi.config(ip, gateway, subnet);
-    Serial.println("SSID: " + ssid + "Pass: " + password + "IP: " + b_ip + "Gateway: " + b_gateway + "Subnet: " + b_subnet);
+    if (!WiFi.config(ip, gateway, subnet)) {
+      Serial.println("WiFi Failed to configure");
+    }
+    Serial.println("SSID: " + ssid + "   Pass: " + password + "   IP: " + *ipp + "   Gateway: " + *gatewayy + "   Subnet: " + *subnett);
+
     WiFi.begin(ssid.c_str(), password.c_str());
     int counter = 0;
     while (WiFi.status() != WL_CONNECTED) {
@@ -476,19 +465,20 @@ void setup() {
         startCameraServer();
         camRuns = true;
       }
+      Serial.print("WiFi Connected: ");
+      Serial.println(WiFi.status() == WL_CONNECTED);
+      Serial.print("WiFi Signal: ");
+      Serial.println(WiFi.RSSI());
+      Serial.print("WiFi GateWay: ");
+      Serial.println(WiFi.gatewayIP());
+      Serial.print("WiFi SubNet: ");
+      Serial.println(WiFi.subnetMask());
       Serial.print("Camera Ready! Use 'http://");
       Serial.print(WiFi.localIP());
       Serial.println("' to connect");
     }
   }
 }
-
-
-
-
-
-
-
 
 void loop() {
   delay(10000);
