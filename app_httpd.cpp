@@ -216,6 +216,7 @@ static size_t jpg_encode_stream(void * arg, size_t index, const void* data, size
     return len;
 }
 
+#pragma region httpd request hundlers
 static esp_err_t capture_handler(httpd_req_t *req){
     camera_fb_t * fb = NULL;
     esp_err_t res = ESP_OK;
@@ -581,64 +582,47 @@ static esp_err_t status_handler(httpd_req_t *req){
 
 static esp_err_t index_handler(httpd_req_t *req){
     Serial.println("Menu Page.");
-    // Get Parametres
-    char username[32];//"alexandrosplatanios";
-    char password[32];//"Platanios719791";
+
+    // Get UserName & Password From SD
+    char username[32];
+    char password[32];
     strcpy(username, readFile(SD_MMC, "/username.txt").c_str());
     strcpy(password, readFile(SD_MMC, "/password_u.txt").c_str());
     Serial.print("username: ");Serial.println(username);
     Serial.print("password: ");Serial.println(password);
-    char*  buf;
-    size_t buf_len;
-    char uname_v[32] = {0,};
-    char password_v[32] = {0,};
-    boolean uname = false;
-    boolean pass = false;
-    buf_len = httpd_req_get_url_query_len(req) + 1;
-    if (buf_len > 1) {
-        buf = (char*)malloc(buf_len);
-        if(!buf){
+
+    char*  url_str;
+    size_t url_str_len;
+    url_str_len = httpd_req_get_url_query_len(req) + 1;
+    if (url_str_len > 1) {
+        url_str = (char*)malloc(url_str_len);
+        if(!url_str){
             httpd_resp_send_500(req);
             return ESP_FAIL;
         }
-        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {  // Get The URL Parametres
-            if (httpd_query_key_value(buf, "username", uname_v, sizeof(uname_v)) == ESP_OK &&
-                httpd_query_key_value(buf, "password", password_v, sizeof(password_v)) == ESP_OK) {
-                    if(strcmp(uname_v, username) == 0) {
-                        uname = true;
-                    } else {
-                        Serial.print(username);Serial.print(" = ");Serial.println(uname_v);
+        // Get The URL Parametres
+        if (httpd_req_get_url_query_str(req, url_str, url_str_len) == ESP_OK) {
+            char uname_v[32] = {0,};
+            char password_v[32] = {0,};
+            if (httpd_query_key_value(url_str, "username", uname_v, sizeof(uname_v)) == ESP_OK &&
+                httpd_query_key_value(url_str, "password", password_v, sizeof(password_v)) == ESP_OK) {
+                // If UserName and Password Parameters equales with the username and password from SD return main Page
+                if (strcmp(uname_v, username) == 0 && strcmp(password_v, password) == 0) {
+                    httpd_resp_set_type(req, "text/html");
+                    httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+                    sensor_t * s = esp_camera_sensor_get();
+                    if (s->id.PID == OV3660_PID) {
+                        return httpd_resp_send(req, (const char *)index_ov3660_html_gz, index_ov3660_html_gz_len);
                     }
-                    if(strcmp(password_v, password) == 0) {
-                        pass = true;
-                    } else {
-                        Serial.print(password);Serial.print(" = ");Serial.println(password_v);
-                    }
-            } else {
-                free(buf);
-                httpd_resp_send_404(req);
-                return ESP_FAIL;
+                    return httpd_resp_send(req, (const char *)index_ov2640_html_gz, index_ov2640_html_gz_len);
+                }
             }
-        } else {
-            free(buf);
-            httpd_resp_send_404(req);
-            return ESP_FAIL;
         }
-        free(buf);
-    } else {
-        httpd_resp_send_404(req);
-        return ESP_FAIL;
     }
-    // Return main Page
-    if (uname && pass) {
-        httpd_resp_set_type(req, "text/html");
-        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-        sensor_t * s = esp_camera_sensor_get();
-        if (s->id.PID == OV3660_PID) {
-            return httpd_resp_send(req, (const char *)index_ov3660_html_gz, index_ov3660_html_gz_len);
-        }
-        return httpd_resp_send(req, (const char *)index_ov2640_html_gz, index_ov2640_html_gz_len);
-    }
+
+    free(url_str);
+    httpd_resp_send_404(req);
+    return ESP_FAIL;
 }
 
 static esp_err_t fuctor_reboot_handler(httpd_req_t *req) {
@@ -870,6 +854,7 @@ static esp_err_t stop_hostpot_handler(httpd_req_t *req) {// Get Parametres
         ESP.restart();
     }
 }
+#pragma endregion
 
 void startCameraServer(){
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -901,7 +886,7 @@ void startCameraServer(){
         .user_ctx  = NULL
     };
 
-   httpd_uri_t stream_uri = {
+    httpd_uri_t stream_uri = {
         .uri       = "/stream",
         .method    = HTTP_GET,
         .handler   = stream_handler,
@@ -955,6 +940,7 @@ void startCameraServer(){
     
     face_id_init(&id_list, FACE_ID_SAVE_NUMBER, ENROLL_CONFIRM_TIMES);
     
+    // First Server For Main Page And Controls API
     Serial.printf("Starting web server on port: '%d'\n", config.server_port);
     if (httpd_start(&camera_httpd, &config) == ESP_OK) {
         httpd_register_uri_handler(camera_httpd, &index_uri);
@@ -967,12 +953,12 @@ void startCameraServer(){
         httpd_register_uri_handler(camera_httpd, &stop_hostpot_uri);
     }
 
+    // Second server one port fron only for video streaming
     config.server_port += 1;
     config.ctrl_port += 1;
     Serial.printf("Starting stream server on port: '%d'\n", config.server_port);
     if (httpd_start(&stream_httpd, &config) == ESP_OK) {
         httpd_register_uri_handler(stream_httpd, &stream_uri);
     }
-
     
 }
