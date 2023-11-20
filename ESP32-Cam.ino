@@ -9,6 +9,9 @@
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 
+// html gzip files
+#include "camera_index.h"
+
 //#define STATIC_WIFI_CONNECT
 
 
@@ -23,7 +26,6 @@ static IPAddress ip(192, 168, 1, 50);
 static IPAddress gateway(192, 168, 1, 254); // Routers IP
 static IPAddress subnet(255, 255, 255, 0);
 */
-
 
 void startCameraServer();
 bool camRuns = false;
@@ -54,118 +56,6 @@ void updateSaveWifiConnectionDataToSD(
   bool run
 );
 
-const char MAIN_page[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Controll Center</title>
-        <!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>-->
-        <style>
-
-        </style>
-    </head>
-    <body>
-        <div style="text-align: center;">
-            <h1>WiFi:</h1>
-            <label for="ssid"><p style="font-size: 21px;">ssid:</p></label>
-            <input type="Text" style="font-size: 21px;" id="ssid" name="ssid" />
-            <br/>
-            <label for="password"><p style="font-size: 21px;">password:</p></label>
-            <input type="Text" style="font-size: 21px;" id="password" name="password" />
-        </div>
-        <br/><br/>
-        <div style="text-align: center;">
-            <h1>Camera Settings:</h1>
-            <label for="username"><p style="font-size: 21px;">username:</p></label>
-            <input type="Text" style="font-size: 21px;" id="username" name="username" />
-            <br/>
-            <label for="password_u"><p style="font-size: 21px;">password:</p></label>
-            <input type="Text" style="font-size: 21px;" id="password_u" name="password_u" />
-        </div>
-        <br/><br/>
-        <div style="text-align: center;">
-            <h1>Static IP:</h1>
-            <label for="ip_1"><p style="font-size: 21px;">ip:</p></label>
-            <input type="Text" style="font-size: 21px; width:50px;" id="ip_1" name="ip_1" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="ip_2" name="ip_2" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="ip_3" name="ip_3" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="ip_4" name="ip_4" />
-            <br/>
-            <label for="gateway_1"><p style="font-size: 21px;">gateway:</p></label>
-            <input type="Text" style="font-size: 21px; width:50px;" id="gateway_1" name="gateway_1" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="gateway_2" name="gateway_2" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="gateway_3" name="gateway_3" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="gateway_4" name="gateway_4" />
-            <br/>
-            <label for="subnet_1"><p style="font-size: 21px;">subnet:</p></label>
-            <input type="Text" style="font-size: 21px; width:50px;" id="subnet_1" name="subnet_1" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="subnet_2" name="subnet_2" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="subnet_3" name="subnet_3" />
-            <input type="Text" style="font-size: 21px; width:50px;" id="subnet_4" name="subnet_4" />
-            <!--
-            <br/>
-            <label for="port"><p style="font-size: 21px;">port:</p></label>
-            <input type="Text" style="font-size: 21px; width:50px;" id="port" name="port" />
-            -->
-        </div>
-        <br/><br/>
-        <br/>
-        <div style="text-align: center;">
-            <button id="save_button" style="font-size: 21px; border-radius: 15%;" name="save" onclick="SaveRequest()">save</button>
-            <button id="stream" style="font-size: 21px; border-radius: 15%;" name="stream" onclick="startStream()">stream</button>
-            <button id="stream" style="font-size: 21px; border-radius: 15%;" name="cancel" onclick="Close()">cansel</button>
-        </div>
-        <br/><br/>
-        <br/>
-    </body>
-    <script>
-      function SaveRequest() {
-        let ssid = document.getElementById("ssid").value;
-        let password = document.getElementById("password").value;
-        let username = document.getElementById("username").value;
-        let password_u = document.getElementById("password_u").value;
-        let ip_1 = document.getElementById("ip_1").value;
-        let ip_2 = document.getElementById("ip_2").value;
-        let ip_3 = document.getElementById("ip_3").value;
-        let ip_4 = document.getElementById("ip_4").value;
-        let gateway_1 = document.getElementById("gateway_1").value;
-        let gateway_2 = document.getElementById("gateway_2").value;
-        let gateway_3 = document.getElementById("gateway_3").value;
-        let gateway_4 = document.getElementById("gateway_4").value;
-        let subnet_1 = document.getElementById("subnet_1").value;
-        let subnet_2 = document.getElementById("subnet_2").value;
-        let subnet_3 = document.getElementById("subnet_3").value;
-        let subnet_4 = document.getElementById("subnet_4").value;
-        //let port = document.getElementById("port").value;
-        let url = "/save?ssid="+ssid+"&password="+password+"&username="+username+"&password_u="+password_u+
-            "&ip_1="+ip_1+"&ip_2="+ip_2+"&ip_3="+ip_3+"&ip_4="+ip_4+
-            "&gateway_1="+gateway_1+"&gateway_2="+gateway_2+"&gateway_3="+gateway_3+"&gateway_4="+gateway_4+
-            "&subnet_1="+subnet_1+"&subnet_2="+subnet_2+"&subnet_3="+subnet_3+"&subnet_4="+subnet_4;//+"&port="+port;
-        var client = new XMLHttpRequest();
-        client.open("GET", url, true);
-        client.send(null); 
-      }
-      function startStream() {
-        let url = "/hostpotstream";
-        var client = new XMLHttpRequest();
-        client.open("GET", url, true);
-        client.send(null);
-        //setTimeout(() => {window.location = "http://192.168.4.1:81/stream"}, 1000);
-        setTimeout(window.open("http://192.168.4.1:81/stream", "_blank"), 2000);
-        //window.open("http://192.168.4.1:81/stream", "_blank");
-      }
-      function Close() {
-        let url = "/hostpotstop";
-        var client = new XMLHttpRequest();
-        client.open("GET", url, true);
-        client.send(null);
-      }
-  </script>
-</html>
-)rawliteral";
-
 // Start The Server
 void start_hostpot() {
   if (WiFi.status() != WL_CONNECTED) {
@@ -182,7 +72,7 @@ void start_hostpot() {
   }
   // Send web page with input fields to client
   serverh.on("/main", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send_P(200, "text/html", MAIN_page);
+    request->send_P(200, "text/html", hotspot_main_html_gz, hotspot_main_html_gz_len);
   });
   
   // When Click Save Button

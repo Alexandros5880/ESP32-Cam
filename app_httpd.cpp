@@ -320,9 +320,8 @@ static esp_err_t stream_handler(httpd_req_t *req){
     int64_t fr_encode = 0;
 
     static int64_t last_frame = 0;
-    if(!last_frame) {
-        last_frame = esp_timer_get_time();
-    }
+    if(!last_frame)
+      last_frame = esp_timer_get_time();
 
     res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
     if(res != ESP_OK){
