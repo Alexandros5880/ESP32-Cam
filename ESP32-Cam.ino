@@ -13,6 +13,7 @@
 #include "camera_index.h"
 
 //#define STATIC_WIFI_CONNECT
+//#define START_LOCALHOST
 
 
 /*
@@ -44,7 +45,9 @@ static IPAddress NMask_h(255, 255, 255, 0);
 static AsyncWebServer serverh(80);
 
 void startCameraServer();
-
+void startWifiServer();
+void startHostpotServer();
+void setupCameraPins();
 void updateSaveWifiConnectionDataToSD(
   const char * ssid,
   const char * password,
@@ -55,9 +58,135 @@ void updateSaveWifiConnectionDataToSD(
   const char * subnet,
   bool run
 );
+String* split(String &str);
 
-// Start The Server
-void start_hostpot() {
+void setup() {
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+  Serial.println();
+
+  setup_SD();
+  setupCameraPins();
+
+  #ifdef STATIC_WIFI_CONNECT
+    Serial.println("\n\nConnecting to static: WIND_9138C1 ...\n");
+    updateSaveWifiConnectionDataToSD("WIND_9138C1", "-Plat1234Tak1234", "admin", "123456", "192&168&1&111", "192&168&1&254", "255&255&255&0", true);
+  #endif
+
+  #ifdef START_LOCALHOST
+    startHostpotServer();
+    return;
+  #endif
+
+  boolean runserver = (readFile(SD_MMC, "/run.txt") == "true")? true : false;
+  
+  if (runserver) {
+    startWifiServer();
+
+    // 1 minute trying to connect to wifi without success
+    int counter = 0;
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(1000);
+      Serial.print(".");
+      counter++;
+      if (counter == 15) {
+        runserver = false;
+        break;
+      }
+    }
+
+    if (!runserver) {
+      startHostpotServer();
+      return;
+    } else {
+      Serial.println("");
+      Serial.println("WiFi connected global");
+      if(!camRuns) {
+        startCameraServer();
+        camRuns = true;
+      }
+      Serial.print("WiFi Connected: ");
+      Serial.println(WiFi.status() == WL_CONNECTED);
+      Serial.print("WiFi Signal: ");
+      Serial.println(WiFi.RSSI());
+      Serial.print("WiFi GateWay: ");
+      Serial.println(WiFi.gatewayIP());
+      Serial.print("WiFi SubNet: ");
+      Serial.println(WiFi.subnetMask());
+      Serial.print("Camera Ready! Use 'http://");
+      Serial.print(WiFi.localIP());
+      Serial.println("' to connect");
+    }
+
+  }
+}
+
+void loop() {
+  delay(10000);
+}
+
+void setupCameraPins() {
+  // Setup Cameras Pins
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
+  //init with high specs to pre-allocate larger buffers
+  if(psramFound()){
+    config.frame_size = FRAMESIZE_UXGA;
+    config.jpeg_quality = 10;
+    config.fb_count = 2;
+  } else {
+    config.frame_size = FRAMESIZE_SVGA;
+    config.jpeg_quality = 12;
+    config.fb_count = 1;
+  }
+  #if defined(CAMERA_MODEL_ESP_EYE)
+    pinMode(13, INPUT_PULLUP);
+    pinMode(14, INPUT_PULLUP);
+  #endif
+  // Init Camera
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) {
+    Serial.printf("Camera init failed with error 0x%x", err);
+    return;
+  }
+  // Setup Cameras Settings
+  sensor_t * s = esp_camera_sensor_get();
+  // Initial sensors are flipped vertically and colors are a bit saturated
+  if (s->id.PID == OV3660_PID) {
+    s->set_vflip(s, 1);       //flip it back
+    s->set_brightness(s, 1);  //up the blightness just a bit
+    s->set_saturation(s, -2); //lower the saturation
+  }
+  // Drop down frame size for higher initial frame rate
+  //s->set_framesize(s, FRAMESIZE_QVGA);
+  s->set_framesize(s, (framesize_t)7);
+  s->set_vflip(s, 1);
+  #if defined(CAMERA_MODEL_M5STACK_WIDE)
+    s->set_vflip(s, 1);
+    s->set_hmirror(s, 1);
+  #endif
+}
+
+void startHostpotServer() {
   if (WiFi.status() != WL_CONNECTED) {
     // Remove the password parameter, if you want the AP (Access Point) to be open
     WiFi.mode(WIFI_AP);
@@ -177,6 +306,30 @@ void start_hostpot() {
     writeFile(SD_MMC, "/run.txt", "true");
     ESP.restart();
   });
+
+  serverh.on("/getdata", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String ssid = readFile(SD_MMC, "/ssid.txt");
+    String password = readFile(SD_MMC, "/password.txt");
+    String username = readFile(SD_MMC, "/username.txt");
+    String password_u = readFile(SD_MMC, "/password_u.txt");
+    // Get Static Ip GateWay and Subnet From Files
+    String b_ip = readFile(SD_MMC, "/ip.txt");
+    String b_gateway = readFile(SD_MMC, "/gateway.txt");
+    String b_subnet = readFile(SD_MMC, "/subnet.txt");
+
+    String body =
+              "{"
+              "\"ssid\":\"" + ssid + "\","
+              "\"password\":\"" + password + "\","
+              "\"username\":\"" + username + "\","
+              "\"password_u\":\"" + password_u + "\","
+              "\"ip\":\"" + b_ip + "\","
+              "\"gateway\":\"" + b_gateway + "\","
+              "\"subnet\":\"" + b_subnet + "\""
+              "}";
+
+    request->send(200, "application/json", body);
+  });
   
   // On Error
   serverh.onNotFound([] (AsyncWebServerRequest *request) {
@@ -187,80 +340,25 @@ void start_hostpot() {
   serverh.begin();
 }
 
-// Setup Cameras Pins
-void setupCamera() {
-  // Setup Cameras Pins
-  camera_config_t config;
-  config.ledc_channel = LEDC_CHANNEL_0;
-  config.ledc_timer = LEDC_TIMER_0;
-  config.pin_d0 = Y2_GPIO_NUM;
-  config.pin_d1 = Y3_GPIO_NUM;
-  config.pin_d2 = Y4_GPIO_NUM;
-  config.pin_d3 = Y5_GPIO_NUM;
-  config.pin_d4 = Y6_GPIO_NUM;
-  config.pin_d5 = Y7_GPIO_NUM;
-  config.pin_d6 = Y8_GPIO_NUM;
-  config.pin_d7 = Y9_GPIO_NUM;
-  config.pin_xclk = XCLK_GPIO_NUM;
-  config.pin_pclk = PCLK_GPIO_NUM;
-  config.pin_vsync = VSYNC_GPIO_NUM;
-  config.pin_href = HREF_GPIO_NUM;
-  config.pin_sscb_sda = SIOD_GPIO_NUM;
-  config.pin_sscb_scl = SIOC_GPIO_NUM;
-  config.pin_pwdn = PWDN_GPIO_NUM;
-  config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000;
-  config.pixel_format = PIXFORMAT_JPEG;
-  //init with high specs to pre-allocate larger buffers
-  if(psramFound()){
-    config.frame_size = FRAMESIZE_UXGA;
-    config.jpeg_quality = 10;
-    config.fb_count = 2;
-  } else {
-    config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 1;
-  }
-  #if defined(CAMERA_MODEL_ESP_EYE)
-    pinMode(13, INPUT_PULLUP);
-    pinMode(14, INPUT_PULLUP);
-  #endif
-  // Inti Camera
-  esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
-    return;
-  }
-  // Setup Cameras Settings
-  sensor_t * s = esp_camera_sensor_get();
-  //initial sensors are flipped vertically and colors are a bit saturated
-  if (s->id.PID == OV3660_PID) {
-    s->set_vflip(s, 1);       //flip it back
-    s->set_brightness(s, 1);  //up the blightness just a bit
-    s->set_saturation(s, -2); //lower the saturation
-  }
-  //drop down frame size for higher initial frame rate
-  //s->set_framesize(s, FRAMESIZE_QVGA);
-  s->set_framesize(s, (framesize_t)7);
-  s->set_vflip(s, 1);
-  #if defined(CAMERA_MODEL_M5STACK_WIDE)
-    s->set_vflip(s, 1);
-    s->set_hmirror(s, 1);
-  #endif
-}
+void startWifiServer() {
+  String ssid = readFile(SD_MMC, "/ssid.txt");
+  String password = readFile(SD_MMC, "/password.txt");
+  // Get Static Ip GateWay and Subnet From Files
+  String b_ip = readFile(SD_MMC, "/ip.txt");
+  String b_gateway = readFile(SD_MMC, "/gateway.txt");
+  String b_subnet = readFile(SD_MMC, "/subnet.txt");
+  String * ipp = split(b_ip);
+  String * gatewayy = split(b_gateway);
+  String * subnett = split(b_subnet);
+  IPAddress ip(ipp[0].toInt(), ipp[1].toInt(), ipp[2].toInt(), ipp[3].toInt());
+  IPAddress gateway(gatewayy[0].toInt(), gatewayy[1].toInt(), gatewayy[2].toInt(), gatewayy[3].toInt());
+  IPAddress subnet(subnett[0].toInt(), subnett[1].toInt(), subnett[2].toInt(), subnett[3].toInt());
 
-// Split String Function
-String* split(String &str) {
-  String * my_data = new String[4];
-  int pointer = 0;
-  for (int i = 0; i < str.length(); i++) {
-    if (str[i] != '&') {
-      my_data[pointer] += str[i];
-    } else {
-      pointer++;
-    }
+  if (!WiFi.config(ip, gateway, subnet)) {
+    Serial.println("WiFi Failed to configure");
   }
-  return my_data;
+  Serial.println("SSID: " + ssid + "   Pass: " + password + "   IP: " + *ipp + "   Gateway: " + *gatewayy + "   Subnet: " + *subnett);
+  WiFi.begin(ssid.c_str(), password.c_str());
 }
 
 void updateSaveWifiConnectionDataToSD(
@@ -293,83 +391,15 @@ void updateSaveWifiConnectionDataToSD(
   writeFile(SD_MMC, "/run.txt", run ? "true" : "false");
 }
 
-void setup() {
-  Serial.begin(115200);
-  Serial.setDebugOutput(true);
-  Serial.println();
-  // Setup SD
-  setup_SD();
-  // Setup Camera
-  setupCamera();
-
-  #ifdef STATIC_WIFI_CONNECT
-  Serial.println("\n\nConnecting to static: WIND_9138C1 ...\n");
-  updateSaveWifiConnectionDataToSD("WIND_9138C1", "-Plat1234Tak1234", "admin", "123456", "192&168&1&111", "192&168&1&254", "255&255&255&0", true);
-  #else
-  Serial.println("\n\nNo connecting to static: WIND_9138C1\n");
-  #endif
-
-  boolean runserver = (readFile(SD_MMC, "/run.txt") == "true")? true : false;
-  if (!runserver) {
-    // Start HotSpot
-    start_hostpot();
-  } else {
-    // Setup WIFI
-    String ssid = readFile(SD_MMC, "/ssid.txt");
-    String password = readFile(SD_MMC, "/password.txt");
-
-    // Get Static Ip GateWay and Subnet From Files
-    String b_ip = readFile(SD_MMC, "/ip.txt");
-    String b_gateway = readFile(SD_MMC, "/gateway.txt");
-    String b_subnet = readFile(SD_MMC, "/subnet.txt");
-    String * ipp = split(b_ip);
-    String * gatewayy = split(b_gateway);
-    String * subnett = split(b_subnet);
-
-    IPAddress ip(ipp[0].toInt(), ipp[1].toInt(), ipp[2].toInt(), ipp[3].toInt());
-    IPAddress gateway(gatewayy[0].toInt(), gatewayy[1].toInt(), gatewayy[2].toInt(), gatewayy[3].toInt());
-    IPAddress subnet(subnett[0].toInt(), subnett[1].toInt(), subnett[2].toInt(), subnett[3].toInt());
-    if (!WiFi.config(ip, gateway, subnet)) {
-      Serial.println("WiFi Failed to configure");
-    }
-    Serial.println("SSID: " + ssid + "   Pass: " + password + "   IP: " + *ipp + "   Gateway: " + *gatewayy + "   Subnet: " + *subnett);
-
-    WiFi.begin(ssid.c_str(), password.c_str());
-    int counter = 0;
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
-      counter++;
-      if (counter == 14) {
-        runserver = false;
-        break;
-      }
-    }
-    if (!runserver) {
-      // Start HotSpot
-      start_hostpot();
+String* split(String &str) {
+  String * my_data = new String[4];
+  int pointer = 0;
+  for (int i = 0; i < str.length(); i++) {
+    if (str[i] != '&') {
+      my_data[pointer] += str[i];
     } else {
-      Serial.println("");
-      Serial.println("WiFi connected global");
-      if(!camRuns) {
-        startCameraServer();
-        camRuns = true;
-      }
-      Serial.print("WiFi Connected: ");
-      Serial.println(WiFi.status() == WL_CONNECTED);
-      Serial.print("WiFi Signal: ");
-      Serial.println(WiFi.RSSI());
-      Serial.print("WiFi GateWay: ");
-      Serial.println(WiFi.gatewayIP());
-      Serial.print("WiFi SubNet: ");
-      Serial.println(WiFi.subnetMask());
-      Serial.print("Camera Ready! Use 'http://");
-      Serial.print(WiFi.localIP());
-      Serial.println("' to connect");
+      pointer++;
     }
   }
-}
-
-void loop() {
-  delay(10000);
+  return my_data;
 }
